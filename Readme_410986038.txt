@@ -1,0 +1,58 @@
+方法0 encoder:
+	更改函式saveas內寫入的格式從"%u"改為"%d"
+	
+方法1 encoder:
+	(1).計算quantization error時，將quantize後的值乘上quantization table的值再將其結果轉為float型態
+	(2).更改bgr2ycbcr內的公式
+方法1 decoder(a):
+	(1). 更改函式read_table_txt的內容，將fgetc(fptr)刪除
+	(2). 將原本double型態的q_y_F、q_cb_F、q_cr_F三個四維陣列改成short型態，並用malloc_4D_short來動態規劃其空間
+	(3). 讀取紀錄量化資料的binary檔案時，改成以short size讀取
+	(4). 新增三個double型態四維陣列y_F、cb_F、cr_F，用他們存取反量化後的值
+	(5). 更改函式ycbcr2bgr的內容，更改其轉換公式，新增檢查轉換回B、G、R後是否會overflow，若有，則將其變為0或255，最後將結果轉為unsigned char型態，並分別存回img.pixels[i][j]的data內
+	(6). 新增計算跟原本檔案R、G、B三個顏色的SQNR
+
+方法1 decoder(b):
+	(1). 將讀取error值和補上error值和反量化改成在同一個迴圈內進行
+	(2). 其餘更改與方法1的decoder(a)相同
+
+方法2 encoder(a):
+	(1). 更改函式save_8x8_RLE_txt的i1、i2每次迴圈的變化方式
+	(2). 其餘更改與方法1的encoder相同
+方法2 encoder(b):
+	(1). 與方法2 encoder(a)相同
+方法2 decoder(a):
+	(1).在讀取header的部分，除了identifier之外，都改成以"%d"讀取
+	(2).其餘更改與方法1的decoder(a)相等
+方法2 decoder(b):
+	(1). 更改與方法1的decoder(a)相等		
+
+方法3 encoder(a):
+	(1). 更改huffmandict函式的內容:
+		賦予變數maxnum和minnum初始值為y[0][0][0]。
+		在建立Huffman_node時，將其left和right設為NULL。
+		node的count從record[minnum+num]改為record[num]。
+		在從Huffman_queue中找尋count為第二小的node時，用來存取第二小的node的指標ptr_second初始值設為NULL，然後更改找尋count為第二小的node的判斷式。
+		找尋到有最小和第二小count的node後，把left改為賦予ptr_second，right賦予ptr_most
+	(2). 更改save_codebook_txt的內容:
+		把stream_ptr的型態從int改為int*的val_ptr
+		新增寫入這個symbol有幾個word、bit長度為多少
+		該改代表bitstream的結束字元為'\0'
+	
+	(3). 其餘更改與方法2的encoder相同
+
+方法3 decoder(a):
+	補齊功能:
+		增加函式read_codebook_txt，用來讀取encoder輸出的codebook
+		增加函式decode_huffman，用來將讀取到的bitstream轉為特定的symbol
+		最後可輸出與方法1的decoder(a)輸出相同的圖片		
+方法3 encoder(b):
+	補齊功能:
+		增加函式RLE2Huffman，用來將RLE list轉為Huffman binary，並寫入進huffman_code.bin
+		最後可輸出txt檔的codebook、huffman_code.bin，並印出整體的壓縮率
+方法3 decoder(b):
+	補齊功能:
+		增加函式decode_huffman_by_val，用來將讀取到的word依照codebook轉為指定的symbol
+		最後可輸出與方法1的decoder(a)輸出相同的圖片	
+
+	
